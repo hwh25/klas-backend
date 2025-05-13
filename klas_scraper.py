@@ -1,20 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
-import json
+from datetime import datetime
 
 def get_lecture_data(user_id: str, password: str):
-    # 시텔 KLAS 객\uxc778 계\uxc815 검사가 안 되는 경우, 또는 테스트에서 통신만 하고 싶을 때 사용
-    return {
-        "lectureName": "AIÆ구문",
-        "startDate": "2025-05-10 00:00",
-        "endDate": "2025-05-20 23:59"
-    }
-
-    # 테스트가 안인 경우가 아니면, 이전의 실천 사용을 보게
-
     session = requests.Session()
 
-    # 1. 로그인 요청
+    # 1. 로그인
     login_url = "https://klas.kw.ac.kr/usr/cmn/login/LoginConfirm.do"
     login_data = {
         "loginId": user_id,
@@ -37,16 +28,22 @@ def get_lecture_data(user_id: str, password: str):
         return {"error": "일정 정보 요청 실패"}
 
     try:
+        now = datetime.now()
         data = schedule_res.json()
+
         for item in data.get("list", []):
             if item.get("typeNm") == "과제":
-                return {
-                    "lectureName": item.get("schdulTitle", ""),
-                    "startDate": parse_time(item.get("started")),
-                    "endDate": parse_time(item.get("ended"))
-                }
+                end_str = item.get("ended", "")
+                end_time = datetime.strptime(end_str, "%Y%m%d%H%M%S")
+                if end_time > now:
+                    return {
+                        "lectureName": item.get("schdulTitle", ""),
+                        "startDate": parse_time(item.get("started")),
+                        "endDate": parse_time(item.get("ended"))
+                    }
 
-        return {"error": "오류나인 경우의 일정이 없음"}
+        return {"error": "예정된 강의 일정 없음"}
+
     except Exception as e:
         return {"error": f"JSON 파싱 실패: {str(e)}"}
 
